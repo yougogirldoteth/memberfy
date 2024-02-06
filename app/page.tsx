@@ -49,12 +49,12 @@ export default async function Home({
 
   console.log(state);
 
-  const fallbackImageUrl = '/fc_opepen.png';
+  const fallbackImageUrl = 'fc_opepen.png';
 
-  // then, when done, return next frame
+  // then, when done, return next frames
   return (
     <div>
-      Starter kit.
+      Opepefy your PFP
       <FrameContainer
         postUrl="/frames"
         state={state}
