@@ -49,7 +49,7 @@ export default async function Home({
 
   console.log(state);
 
-  const fallbackImageUrl = 'fc_opepen.png';
+  const fallbackImageUrl = 'https://opepefy.vercel.app/fc_opepen.png';
 
   // then, when done, return next frames
   return (
