@@ -10,6 +10,7 @@ import {
 } from "frames.js/next/server";
 import Link from "next/link";
 import { generateImage } from "./generate-image";
+import { redirect } from "next/dist/server/api-utils";
 
 type State = {
   active: string;
@@ -50,6 +51,7 @@ export default async function Home({
   console.log(state);
 
   const fallbackImageUrl = 'https://opepefy.vercel.app/fc_opepen.png';
+  const fid = validMessage?.data.fid;
 
   // then, when done, return next frames
   return (
@@ -60,12 +62,13 @@ export default async function Home({
         state={state}
         previousFrame={previousFrame}
       >
-        <FrameImage
+        <FrameImage aspectRatio="1:1"
           src={encodedPngImage ? `data:image/png;base64,${encodedPngImage}` : fallbackImageUrl}
-        /> 
+        />
         <FrameButton onClick={dispatch}>
           {"Opepefy your PFP"}
         </FrameButton>
+        <FrameButton href={encodedPngImage ? `https://opepefy.vercel.app/api/custom_opepen/${fid}` : fallbackImageUrl}>Download Opepen</FrameButton>
       </FrameContainer>
     </div>
   );
