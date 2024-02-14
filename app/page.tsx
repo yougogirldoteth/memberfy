@@ -50,13 +50,13 @@ export default async function Home({
 
   console.log(state);
 
-  const fallbackImageUrl = 'https://opepefy.vercel.app/fc_opepen.png';
+  const fallbackImageUrl = 'https://built-by-ygg.vercel.app/fc_hat.png';
   const fid = validMessage?.data.fid;
 
   // then, when done, return next frames
   return (
     <div>
-      Opepefy your PFP
+      Degenify your PFP by yougogirl.eth
       <FrameContainer
         postUrl="/frames"
         state={state}
@@ -66,9 +66,9 @@ export default async function Home({
           src={encodedPngImage ? `data:image/png;base64,${encodedPngImage}` : fallbackImageUrl}
         />
         <FrameButton onClick={dispatch}>
-          {"Opepefy your PFP"}
+          {"Degenify your PFP"}
         </FrameButton>
-        <FrameButton href={encodedPngImage ? `https://opepefy.vercel.app/api/custom_opepen/${fid}` : fallbackImageUrl}>Download Opepen</FrameButton>
+        <FrameButton href={encodedPngImage ? `https://built-by-ygg.vercel.app/api/custom_hat/${fid}` : fallbackImageUrl}>Download Hat</FrameButton>
       </FrameContainer>
     </div>
   );

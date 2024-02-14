@@ -1,7 +1,42 @@
-import sharp from 'sharp';
+// pages/api/scaled_scape/[id].ts
+import type { NextApiRequest, NextApiResponse } from 'next';
 import fetch from 'node-fetch';
-import fs from 'fs';
-import path from 'path';
+import sharp from 'sharp';
+
+
+export default async function handler(req: NextApiRequest, res: NextApiResponse) {
+  try {
+    // Set CORS headers
+    res.setHeader('Access-Control-Allow-Origin', '*');
+    res.setHeader('Access-Control-Allow-Methods', 'GET, OPTIONS');
+    res.setHeader('Access-Control-Allow-Headers', 'Origin, X-Requested-With, Content-Type, Accept');
+
+    if (req.method === 'OPTIONS') {
+      return res.status(200).end();
+    }
+
+    const { fid } = req.query;
+
+    if (typeof fid !== 'string') {
+      return res.status(400).json({ error: 'Bad Request' });
+    }
+
+    const buffer = await generateImage({ data: { fid } });
+
+    if (!buffer) {
+      return res.status(404).send('Image not found');
+    }
+
+    // Set the Content-Type header to indicate PNG image
+    res.setHeader('Content-Type', 'image/png');
+
+    // Send the image data as the response
+    res.status(200).send(buffer);
+  } catch (error) {
+    console.error('Error generating scaled scape:', error);
+    res.status(500).json({ error: 'Internal Server Error' });
+  }
+}
 
 interface SearchCasterProfile {
   body?: {
@@ -9,90 +44,84 @@ interface SearchCasterProfile {
   };
 }
 
-export async function generateImage(validMessage: any): Promise<string | null> {
-  // Log the fid to verify it's correctly extracted
-  const fid = validMessage?.data.fid;
+async function generateImage(validMessage: any): Promise<Buffer | null> {
+  const fid = validMessage?.data?.fid;
   console.log(`Fetching profile for fid: ${fid}`);
 
-  // Return a different PNG when fid is null
   if (!fid) {
     console.error('FID is undefined or null. Returning fallback image.');
-    return getFallbackImageBase64();
+    // Handle fallback image differently since this function must return a Buffer
+    return null; // Consider having a preloaded Buffer for a fallback image or a different handling strategy
   }
 
-  const fetchData = async (): Promise<string | null> => {
-    try {
-      const response = await fetch(`https://searchcaster.xyz/api/profiles?fid=${fid}`);
-      if (!response.ok) throw new Error(`Failed to fetch profile for fid ${fid}: HTTP status ${response.status}`);
+  try {
+    const response = await fetch(`https://searchcaster.xyz/api/profiles?fid=${fid}`);
+    if (!response.ok) throw new Error(`Failed to fetch profile for fid ${fid}: HTTP status ${response.status}`);
 
-      const searchcasterData: SearchCasterProfile[] = await response.json() as SearchCasterProfile[];
+    const searchcasterData: SearchCasterProfile[] = await response.json() as SearchCasterProfile[];
 
-      if (!Array.isArray(searchcasterData) || searchcasterData.length === 0) {
-        console.error('User not found');
-        return null;
-      }
-
-      const avatarUrl = searchcasterData[0]?.body?.avatarUrl;
-      if (!avatarUrl) {
-        console.error('Avatar URL not found');
-        return null;
-      }
-
-      // Fetch avatar with retry on rate limit error (429)
-      const avatarBuffer = await fetchWithRetry(`https://res.cloudinary.com/merkle-manufactory/image/fetch/c_fill,f_jpg,w_500/${avatarUrl}`);
-      const { data, info } = await sharp(avatarBuffer).raw().toBuffer({ resolveWithObject: true });
-
-      if (!data) {
-        console.error('Failed to process image data');
-        return null;
-      }
-
-      const gridSizeX = 9;
-      const gridSizeY = 9;
-      const cellWidth = Math.floor(info.width / gridSizeX);
-      const cellHeight = Math.floor(info.height / gridSizeY);
-
-      const palette: number[][] = [];
-
-      for (let y = 0; y < gridSizeY; y++) {
-        for (let x = 0; x < gridSizeX; x++) {
-          const startX = x * cellWidth;
-          const startY = y * cellHeight;
-          const dominantColor = getDominantColorInGrid(data, startX, startY, cellWidth, cellHeight, info.width);
-          palette.push(dominantColor);
-        }
-      }
-
-      // x is column and y is row (diff than usual)
-      const coordinatesTable = [
-        { x: 0, y: 0 }, // BG 
-        { x: 0, y: 0 }, // changes nothin 
-        { x: 0, y: 0 }, // changes nothin
-        { x: 1, y: 3 }, // 
-        { x: 3, y: 3 }, // 
-        { x: 5, y: 4 }, // 
-        { x: 7, y: 4 }, //
-        { x: 1, y: 5 }, // 
-        { x: 3, y: 5 }, //
-        { x: 5, y: 6 }, // 
-        { x: 7, y: 6 }, // 
-      ];
-
-      const pathColorIndices = coordinatesTable.map(({ x, y }) => x + y * gridSizeX);
-      const fidNumber = Number(fid);
-
-      const svgStringWithColors = constructSvgStringWithColors(palette, pathColorIndices, fidNumber);
-
-      const pngBuffer = await sharp(Buffer.from(svgStringWithColors)).png().toBuffer();
-      return pngBuffer.toString('base64');
-
-    } catch (error) {
-      console.error('Error fetching data:', error);
+    if (!Array.isArray(searchcasterData) || searchcasterData.length === 0) {
+      console.error('User not found');
       return null;
     }
-  };
 
-  return await fetchData();
+    const avatarUrl = searchcasterData[0]?.body?.avatarUrl;
+    if (!avatarUrl) {
+      console.error('Avatar URL not found');
+      return null;
+    }
+
+    const avatarBuffer = await fetchWithRetry(`https://res.cloudinary.com/merkle-manufactory/image/fetch/c_fill,f_jpg,w_500/${avatarUrl}`);
+    const { data, info } = await sharp(avatarBuffer).raw().toBuffer({ resolveWithObject: true });
+
+    if (!data) {
+      console.error('Failed to process image data');
+      return null;
+    }
+
+    // Assuming getDominantColorInGrid, constructSvgStringWithColors, and getColorForFid are defined elsewhere
+    const gridSizeX = 9;
+    const gridSizeY = 9;
+    const cellWidth = Math.floor(info.width / gridSizeX);
+    const cellHeight = Math.floor(info.height / gridSizeY);
+
+    const palette: number[][] = [];
+
+    for (let y = 0; y < gridSizeY; y++) {
+      for (let x = 0; x < gridSizeX; x++) {
+        const startX = x * cellWidth;
+        const startY = y * cellHeight;
+        const dominantColor = getDominantColorInGrid(data, startX, startY, cellWidth, cellHeight, info.width);
+        palette.push(dominantColor);
+      }
+    }
+
+    // x is column and y is row (diff than usual)
+    const coordinatesTable = [
+      { x: 0, y: 0 }, // BG 
+      { x: 0, y: 0 }, // changes nothin 
+      { x: 0, y: 0 }, // changes nothin
+      { x: 1, y: 3 }, // 
+      { x: 3, y: 3 }, // 
+      { x: 5, y: 4 }, // 
+      { x: 7, y: 4 }, //
+      { x: 1, y: 5 }, // 
+      { x: 3, y: 5 }, //
+      { x: 5, y: 6 }, // 
+      { x: 7, y: 6 }, // 
+    ];
+
+    const pathColorIndices = coordinatesTable.map(({ x, y }) => x + y * gridSizeX);
+    const fidNumber = Number(fid);
+    const svgStringWithColors = constructSvgStringWithColors(palette, pathColorIndices, fidNumber);
+    const pngBuffer = await sharp(Buffer.from(svgStringWithColors)).png().toBuffer();
+
+    return pngBuffer;
+
+  } catch (error) {
+    console.error('Error fetching data:', error);
+    return null;
+  }
 }
 
 async function fetchWithRetry(url: string, retries = 3, backoff = 300) {
@@ -146,16 +175,7 @@ function getDominantColorInGrid(data: Buffer | undefined, startX: number, startY
   return [avgRed, avgGreen, avgBlue];
 }
 
-async function getFallbackImageBase64(): Promise<string | null> {
-  const imagePath = path.join(__dirname, 'public', 'fc_degen.png'); // Adjust the path as necessary
-  try {
-    const imageBuffer = fs.readFileSync(imagePath);
-    return imageBuffer.toString('base64');
-  } catch (error) {
-    console.error('Error reading fallback image:', error);
-    return null; // This is now valid due to the function return type being `Promise<string | null>`
-  }
-}
+
 
 function getColorForFid(fid: number): string {
   if (fid < 1000) return 'gold';
@@ -163,6 +183,7 @@ function getColorForFid(fid: number): string {
   else if (fid < 20000) return '#94E337';
   else return 'white'; // Default color
 }
+
 
 
 function constructSvgStringWithColors(palette: number[][], pathColorIndices: number[], fid: number): string {
