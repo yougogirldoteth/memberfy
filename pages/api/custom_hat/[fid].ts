@@ -2,6 +2,7 @@
 import type { NextApiRequest, NextApiResponse } from 'next';
 import fetch from 'node-fetch';
 import sharp from 'sharp';
+import kmeans from "kmeans-ts";
 
 
 export default async function handler(req: NextApiRequest, res: NextApiResponse) {
@@ -92,7 +93,7 @@ async function generateImage(validMessage: any): Promise<Buffer | null> {
         const startX = x * cellWidth;
         const startY = y * cellHeight;
         const dominantColor = getDominantColorInGrid(data, startX, startY, cellWidth, cellHeight, info.width);
-        palette.push(dominantColor);
+        palette.push(await dominantColor);
       }
     }
 
@@ -147,33 +148,32 @@ async function fetchWithRetry(url: string, retries = 3, backoff = 300) {
   }
 }
 
-function getDominantColorInGrid(data: Buffer | undefined, startX: number, startY: number, cellWidth: number, cellHeight: number, width: number): number[] {
-  // Initialize sum variables
-  let sumRed = 0, sumGreen = 0, sumBlue = 0;
-
-  // Check if data is defined
-  if (!data) {
-    console.error('Image data is undefined');
-    return [0, 0, 0]; // Return a default color or handle the error as appropriate
-  }
-
-  const totalPixels = cellWidth * cellHeight;
-
+async function getDominantColorInGrid(data: Buffer, startX: number, startY: number, cellWidth: number, cellHeight: number, width: number): Promise<number[]> {
+  const pixels: number[][] = [];
   for (let y = 0; y < cellHeight; y++) {
     for (let x = 0; x < cellWidth; x++) {
       const pixelIndex = ((startY + y) * width + (startX + x)) * 3;
-      sumRed += data?.[pixelIndex] ?? 0;
-      sumGreen += data?.[pixelIndex + 1] ?? 0;
-      sumBlue += data?.[pixelIndex + 2] ?? 0;
+      pixels.push([
+        data[pixelIndex] ?? 0,     // Red
+        data[pixelIndex + 1] ?? 0, // Green
+        data[pixelIndex + 2] ?? 0, // Blue
+      ]);
     }
   }
 
-  const avgRed = Math.round(sumRed / totalPixels);
-  const avgGreen = Math.round(sumGreen / totalPixels);
-  const avgBlue = Math.round(sumBlue / totalPixels);
+  const K = 1; // Assuming we want a single dominant color
+  const result = await kmeans(pixels, K);
 
-  return [avgRed, avgGreen, avgBlue];
+  // Check if centroids are returned, not undefined, and the first element exists
+  if (!result.centroids || result.centroids.length === 0 || result.centroids[0] === undefined) {
+    throw new Error('No valid centroids returned from kmeans.');
+  }
+
+  // Now that we've checked centroids[0] is not undefined, we can safely access it
+  const dominantColor = result.centroids[0].map(Math.round);
+  return dominantColor;
 }
+
 
 
 
