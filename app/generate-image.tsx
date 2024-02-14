@@ -40,9 +40,16 @@ export async function generateImage(validMessage: any): Promise<string | null> {
       }
 
       // Fetch avatar with retry on rate limit error (429)
+      // Fetch avatar with retry on rate limit error (429)
       const avatarBuffer = await fetchWithRetry(`https://res.cloudinary.com/merkle-manufactory/image/fetch/c_fill,f_jpg,w_500/${avatarUrl}`);
-      const { data, info } = await sharp(avatarBuffer).raw().toBuffer({ resolveWithObject: true });
 
+      // Pixelate the entire image by resizing it to a smaller version then optionally back up
+      const pixelatedBuffer = await sharp(avatarBuffer)
+        .resize(25, 25) // Pixelate by resizing down; adjust size as needed
+        .raw()
+        .toBuffer({ resolveWithObject: true });
+
+      const { data, info } = pixelatedBuffer;
       if (!data) {
         console.error('Failed to process image data');
         return null;
