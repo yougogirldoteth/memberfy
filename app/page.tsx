@@ -50,13 +50,13 @@ export default async function Home({
 
   console.log(state);
 
-  const fallbackImageUrl = 'https://built-by-ygg.vercel.app/fc_hat.png';
+  const fallbackImageUrl = 'https://memberfy.vercel.app/member.png';
   const fid = validMessage?.data.fid;
 
   // then, when done, return next frames
   return (
     <div>
-      Degenify your PFP by yougogirl.eth
+      Memberfy your PFP built by yougogirl.eth
       <FrameContainer
         postUrl="/frames"
         state={state}
@@ -66,9 +66,9 @@ export default async function Home({
           src={encodedPngImage ? `data:image/png;base64,${encodedPngImage}` : fallbackImageUrl}
         />
         <FrameButton onClick={dispatch}>
-          {"Degenify your PFP"}
+          {"Memberfy your PFP"}
         </FrameButton>
-        <FrameButton href={encodedPngImage ? `https://built-by-ygg.vercel.app/api/custom_hat/${fid}` : fallbackImageUrl}>Download Hat</FrameButton>
+        <FrameButton href={encodedPngImage ? `https://memberfy.vercel.app/api/custom_member/${fid}` : fallbackImageUrl}>Download Member</FrameButton>
       </FrameContainer>
     </div>
   );
