@@ -15,12 +15,6 @@ export async function generateImage(validMessage: any): Promise<string | null> {
   const fid = validMessage?.data.fid;
   console.log(`Fetching profile for fid: ${fid}`);
 
-  // Return a different PNG when fid is null
-  if (!fid) {
-    console.error('FID is undefined or null. Returning fallback image.');
-    return getFallbackImageBase64();
-  }
-
   const fetchData = async (): Promise<string | null> => {
     try {
       const response = await fetch(`https://searchcaster.xyz/api/profiles?fid=${fid}`);
@@ -39,13 +33,13 @@ export async function generateImage(validMessage: any): Promise<string | null> {
         return null;
       }
 
-      // Fetch avatar with retry on rate limit error (429)
-      // Fetch avatar with retry on rate limit error (429)
+
+      // Fetch avatar
       const avatarBuffer = await fetchWithRetry(`https://res.cloudinary.com/merkle-manufactory/image/fetch/c_fill,f_jpg,w_500/${avatarUrl}`);
 
-      // Pixelate the entire image by resizing it to a smaller version then optionally back up
+      // Pixeling helping with finding dominant color
       const pixelatedBuffer = await sharp(avatarBuffer)
-        .resize(25, 25) // Pixelate by resizing down; adjust size as needed
+        .resize(25, 25) // Pixelate by resizing down
         .raw()
         .toBuffer({ resolveWithObject: true });
 
@@ -55,6 +49,7 @@ export async function generateImage(validMessage: any): Promise<string | null> {
         return null;
       }
 
+      // dividing input image into grid
       const gridSizeX = 9;
       const gridSizeY = 9;
       const cellWidth = Math.floor(info.width / gridSizeX);
@@ -71,17 +66,18 @@ export async function generateImage(validMessage: any): Promise<string | null> {
         }
       }
 
-      // x is column and y is row (diff than usual)
+      // assigning grid cells to svg paths, x is column and y is row 
       const coordinatesTable = [
         { x: 4, y: 4 }, // head
         { x: 5, y: 4 }, // head
         { x: 0, y: 0 }, // changes nothin
         { x: 5, y: 5 }, // noggles
-        { x: 4, y: 6 }, // body
-        { x: 4, y: 7 }, // eye brow
+        { x: 4, y: 6 }, // body 1
+        { x: 4, y: 7 }, // eye brows
         { x: 0, y: 0 }, // BG
         { x: 1, y: 5 }, // changes nothin
-        { x: 4, y: 6 }, // body
+        { x: 4, y: 6 }, // body 2 
+
       ];
 
       const pathColorIndices = coordinatesTable.map(({ x, y }) => x + y * gridSizeX);
@@ -137,7 +133,7 @@ async function getDominantColorInGrid(data: Buffer, startX: number, startY: numb
     }
   }
 
-  const K = 1; // Assuming we want a single dominant color
+  const K = 1;
   const result = await kmeans(pixels, K);
 
   // Check if centroids are returned, not undefined, and the first element exists
@@ -150,17 +146,7 @@ async function getDominantColorInGrid(data: Buffer, startX: number, startY: numb
   return dominantColor;
 }
 
-async function getFallbackImageBase64(): Promise<string | null> {
-  const imagePath = path.join(__dirname, 'public', 'fc_degen.png'); // Adjust the path as necessary
-  try {
-    const imageBuffer = fs.readFileSync(imagePath);
-    return imageBuffer.toString('base64');
-  } catch (error) {
-    console.error('Error reading fallback image:', error);
-    return null; // This is now valid due to the function return type being `Promise<string | null>`
-  }
-}
-
+// not used for this project, but could color any path based on fid (farcaster id)
 function getColorForFid(fid: number): string {
   if (fid < 1000) return 'gold';
   else if (fid < 10000) return '#855DCD';
@@ -168,18 +154,13 @@ function getColorForFid(fid: number): string {
   else return 'white'; // Default color
 }
 
-
 function constructSvgStringWithColors(palette: number[][], pathColorIndices: number[], fid: number): string {
   const svgHeader = `<svg xmlns="http://www.w3.org/2000/svg" width="1024" height="1024" fill="none">`;
   const svgFooter = `</svg>`;
 
   // Determine the color for the farcheck based on fid
-  const farcheckColor = getColorForFid(fid);
-
-  ///const farcheck = `<path fill-opacity=".9" d="m364.421 614.551 471.445-.442 8.159 99.486 8.82 111.617-486.219 1.986-10.143-112.5 7.938-100.147Z" fill="${farcheckColor}" />`;
-
-  ///const backgroundColor = palette ? `rgb(${palette[0]?.[0]}, ${palette[0]?.[1]}, ${palette[0]?.[2]})` : 'rgb(255, 255, 255)';
-  ///const backgroundPath = `<path fill="${backgroundColor}" d="M0 0h1200v1200H0z"/>`; // Adjust as necessary
+  // const farcheckColor = getColorForFid(fid)
+  // const farcheck = `<path fill-opacity=".9" d="" fill="${farcheckColor}" />`;
 
   const svgPaths = [
     '<path fill="COLOR" d="M384 256h-43v43h43v-43Zm43 0h-43v43h43v-43Zm42 0h-42v43h42v-43Zm43 0h-43v43h43v-43Zm43 0h-43v43h43v-43Zm42 0h-42v43h42v-43Zm43 0h-43v43h43v-43Zm-299 43h-42v42h42v-42Zm43 0h-43v42h43v-42Zm43 0h-43v42h43v-42Zm42 0h-42v42h42v-42Zm43 0h-43v42h43v-42Zm43 0h-43v42h43v-42Zm42 0h-42v42h42v-42Zm43 0h-43v42h43v-42Zm43 0h-43v42h43v-42Zm-342 85h-42v43h42v-43Zm86 0h-43v43h43v-43Zm85 0h-43v43h43v-43Zm85 0h-42v43h42v-43Zm86 0h-43v43h43v-43Z"/>',
@@ -192,7 +173,7 @@ function constructSvgStringWithColors(palette: number[][], pathColorIndices: num
     '<path fill="black" d="M384 213h-43v43h43v-43Zm43 0h-43v43h43v-43Zm42 0h-42v43h42v-43Zm43 0h-43v43h43v-43Zm43 0h-43v43h43v-43Zm42 0h-42v43h42v-43Zm43 0h-43v43h43v-43Zm-299 43h-42v43h42v-43Zm342 0h-43v43h43v-43Zm-384 43h-43v42h43v-42Zm426 0h-42v42h42v-42Zm-469 42h-43v43h43v-43Zm512 0h-43v43h43v-43Zm-512 43h-43v43h43v-43Zm512 0h-43v43h43v-43Zm-469 43h-43v42h43v-42Zm0 128h-43v42h43v-42Zm0 42h-43v43h43v-43Zm426 0h-42v43h42v-43Zm-426 43h-43v43h43v-43Zm42 0h-42v43h42v-43Zm384 0h-42v43h42v-43Zm-426 43h-43v42h43v-42Zm42 0h-42v42h42v-42Zm43 0h-43v42h43v-42Zm299 0h-43v42h43v-42Zm42 0h-42v42h42v-42Zm-426 42h-43v43h43v-43Zm42 0h-42v43h42v-43Zm43 0h-43v43h43v-43Zm43 0h-43v43h43v-43Zm42 0h-42v43h42v-43Zm43 0h-43v43h43v-43Zm43 0h-43v43h43v-43Zm42 0h-42v43h42v-43Zm43 0h-43v43h43v-43Zm43 0h-43v43h43v-43Zm42 0h-42v43h42v-43Zm-426 43h-43v43h43v-43Zm42 0h-42v43h42v-43Zm43 0h-43v43h43v-43Zm43 0h-43v43h43v-43Zm42 0h-42v43h42v-43Zm171 0h-43v43h43v-43Zm43 0h-43v43h43v-43Zm42 0h-42v43h42v-43Zm-426 43h-43v42h43v-42Zm42 0h-42v42h42v-42Zm43 0h-43v42h43v-42Zm43 0h-43v42h43v-42Zm42 0h-42v42h42v-42Zm43 0h-43v42h43v-42Zm43 0h-43v42h43v-42Zm42 0h-42v42h42v-42Zm43 0h-43v42h43v-42Zm43 0h-43v42h43v-42Zm42 0h-42v42h42v-42Zm-426 42h-43v43h43v-43Zm42 0h-42v43h42v-43Zm43 0h-43v43h43v-43Zm43 0h-43v43h43v-43Zm42 0h-42v43h42v-43Zm43 0h-43v43h43v-43Zm43 0h-43v43h43v-43Zm42 0h-42v43h42v-43Zm43 0h-43v43h43v-43Zm43 0h-43v43h43v-43Zm42 0h-42v43h42v-43Zm-426 43h-43v43h43v-43Zm42 0h-42v43h42v-43Zm43 0h-43v43h43v-43Zm43 0h-43v43h43v-43Zm42 0h-42v43h42v-43Zm43 0h-43v43h43v-43Zm43 0h-43v43h43v-43Zm42 0h-42v43h42v-43Zm43 0h-43v43h43v-43Zm43 0h-43v43h43v-43Zm42 0h-42v43h42v-43Zm-426 43h-43v42h43v-42Zm42 0h-42v42h42v-42Zm43 0h-43v42h43v-42Zm43 0h-43v42h43v-42Zm42 0h-42v42h42v-42Zm43 0h-43v42h43v-42Zm43 0h-43v42h43v-42Zm42 0h-42v42h42v-42Zm43 0h-43v42h43v-42Zm43 0h-43v42h43v-42Zm42 0h-42v42h42v-42Zm-426 42h-43v43h43v-43Zm42 0h-42v43h42v-43Zm43 0h-43v43h43v-43Zm43 0h-43v43h43v-43Zm42 0h-42v43h42v-43Zm43 0h-43v43h43v-43Zm43 0h-43v43h43v-43Zm42 0h-42v43h42v-43Zm43 0h-43v43h43v-43Zm43 0h-43v43h43v-43Zm42 0h-42v43h42v-43ZM555 640h-43v43h43v-43Zm42 0h-42v43h42v-43ZM427 512h-43v43h43v-43Zm213 0h-43v43h43v-43Z"/>',
     '<path fill="COLOR" d="M341 597h-42v43h42v-43Zm43 0h-43v43h43v-43Zm43 0h-43v43h43v-43Zm42 0h-42v43h42v-43Zm43 0h-43v43h43v-43Zm43 0h-43v43h43v-43Zm42 0h-42v43h42v-43Zm43 0h-43v43h43v-43Zm43 0h-43v43h43v-43Zm-342 43h-42v43h42v-43Zm43 0h-43v43h43v-43Zm43 0h-43v43h43v-43Zm42 0h-42v43h42v-43Zm43 0h-43v43h43v-43Zm128 0h-43v43h43v-43Zm43 0h-43v43h43v-43Zm-342 43h-42v42h42v-42Zm43 0h-43v42h43v-42Zm43 0h-43v42h43v-42Zm42 0h-42v42h42v-42Zm43 0h-43v42h43v-42Zm43 0h-43v42h43v-42Zm42 0h-42v42h42v-42Zm43 0h-43v42h43v-42Zm43 0h-43v42h43v-42Zm-342 42h-42v43h42v-43Zm43 0h-43v43h43v-43Zm43 0h-43v43h43v-43Zm42 0h-42v43h42v-43Zm43 0h-43v43h43v-43Zm43 0h-43v43h43v-43Zm42 0h-42v43h42v-43Zm43 0h-43v43h43v-43Zm43 0h-43v43h43v-43Zm-342 43h-42v43h42v-43Zm43 0h-43v43h43v-43Zm43 0h-43v43h43v-43Zm42 0h-42v43h42v-43Zm171 0h-43v43h43v-43Zm43 0h-43v43h43v-43Zm-342 43h-42v42h42v-42Zm43 0h-43v42h43v-42Zm43 0h-43v42h43v-42Zm42 0h-42v42h42v-42Zm43 0h-43v42h43v-42Zm43 0h-43v42h43v-42Zm42 0h-42v42h42v-42Zm43 0h-43v42h43v-42Zm43 0h-43v42h43v-42Zm-342 42h-42v43h42v-43Zm43 0h-43v43h43v-43Zm43 0h-43v43h43v-43Zm42 0h-42v43h42v-43Zm43 0h-43v43h43v-43Zm43 0h-43v43h43v-43Zm42 0h-42v43h42v-43Zm43 0h-43v43h43v-43Zm43 0h-43v43h43v-43Zm-342 43h-42v43h42v-43Zm43 0h-43v43h43v-43Zm43 0h-43v43h43v-43Zm42 0h-42v43h42v-43Zm43 0h-43v43h43v-43Zm43 0h-43v43h43v-43Zm42 0h-42v43h42v-43Zm43 0h-43v43h43v-43Zm43 0h-43v43h43v-43Zm-342 43h-42v42h42v-42Zm43 0h-43v42h43v-42Zm43 0h-43v42h43v-42Zm42 0h-42v42h42v-42Zm43 0h-43v42h43v-42Zm43 0h-43v42h43v-42Zm42 0h-42v42h42v-42Zm43 0h-43v42h43v-42Zm43 0h-43v42h43v-42Zm-342 42h-42v43h42v-43Zm43 0h-43v43h43v-43Zm43 0h-43v43h43v-43Zm42 0h-42v43h42v-43Zm43 0h-43v43h43v-43Zm43 0h-43v43h43v-43Zm42 0h-42v43h42v-43Zm43 0h-43v43h43v-43Zm43 0h-43v43h43v-43Z"/>',
     '<path fill="black" d="M555 640h-43v43h43v-43Zm42 0h-42v43h42v-43Zm-85 128h-43v43h43v-43Zm43 0h-43v43h43v-43Zm42 0h-42v43h42v-43Z"/>',
-   
+
   ];
 
 

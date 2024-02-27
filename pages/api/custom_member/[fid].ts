@@ -1,4 +1,4 @@
-// pages/api/scaled_scape/[id].ts
+// pages/api/custom_member/[id].ts
 import type { NextApiRequest, NextApiResponse } from 'next';
 import fetch from 'node-fetch';
 import sharp from 'sharp';
@@ -7,7 +7,6 @@ import kmeans from "kmeans-ts";
 
 export default async function handler(req: NextApiRequest, res: NextApiResponse) {
   try {
-    // Set CORS headers
     res.setHeader('Access-Control-Allow-Origin', '*');
     res.setHeader('Access-Control-Allow-Methods', 'GET, OPTIONS');
     res.setHeader('Access-Control-Allow-Headers', 'Origin, X-Requested-With, Content-Type, Accept');
@@ -51,8 +50,7 @@ async function generateImage(validMessage: any): Promise<Buffer | null> {
 
   if (!fid) {
     console.error('FID is undefined or null. Returning fallback image.');
-    // Handle fallback image differently since this function must return a Buffer
-    return null; // Consider having a preloaded Buffer for a fallback image or a different handling strategy
+    return null; 
   }
 
   try {
@@ -72,12 +70,12 @@ async function generateImage(validMessage: any): Promise<Buffer | null> {
       return null;
     }
 
-    // Fetch avatar with retry on rate limit error (429)
+    // Fetch avatar 
     const avatarBuffer = await fetchWithRetry(`https://res.cloudinary.com/merkle-manufactory/image/fetch/c_fill,f_jpg,w_500/${avatarUrl}`);
 
-    // Pixelate the entire image by resizing it to a smaller version then optionally back up
+    // Pixeling helping with finding dominant color
     const pixelatedBuffer = await sharp(avatarBuffer)
-      .resize(25, 25) // Pixelate by resizing down; adjust size as needed
+      .resize(25, 25) // Pixelate by resizing down
       .raw()
       .toBuffer({ resolveWithObject: true });
 
@@ -87,7 +85,7 @@ async function generateImage(validMessage: any): Promise<Buffer | null> {
       return null;
     }
 
-    // Assuming getDominantColorInGrid, constructSvgStringWithColors, and getColorForFid are defined elsewhere
+    // dividing input image into grid
     const gridSizeX = 9;
     const gridSizeY = 9;
     const cellWidth = Math.floor(info.width / gridSizeX);
@@ -104,17 +102,17 @@ async function generateImage(validMessage: any): Promise<Buffer | null> {
       }
     }
 
-    // x is column and y is row (diff than usual)
+    // assigning grid cells to svg paths, x is column and y is row 
     const coordinatesTable = [
       { x: 4, y: 4 }, // head
       { x: 5, y: 4 }, // head
       { x: 0, y: 0 }, // changes nothin
       { x: 5, y: 5 }, // noggles
-      { x: 4, y: 6 }, // body
-      { x: 4, y: 7 }, // eye brow
+      { x: 4, y: 6 }, // body 1
+      { x: 4, y: 7 }, // eye brows
       { x: 0, y: 0 }, // BG
       { x: 1, y: 5 }, // changes nothin
-      { x: 4, y: 6 }, // body
+      { x: 4, y: 6 }, // body 2 
 
     ];
 
@@ -167,7 +165,7 @@ async function getDominantColorInGrid(data: Buffer, startX: number, startY: numb
     }
   }
 
-  const K = 1; // Assuming we want a single dominant color
+  const K = 1;
   const result = await kmeans(pixels, K);
 
   // Check if centroids are returned, not undefined, and the first element exists
@@ -182,12 +180,12 @@ async function getDominantColorInGrid(data: Buffer, startX: number, startY: numb
 
 
 
-
+// not used for this project, but could color any path based on fid (farcaster id)
 function getColorForFid(fid: number): string {
   if (fid < 1000) return 'gold';
   else if (fid < 10000) return '#855DCD';
   else if (fid < 20000) return '#94E337';
-  else return 'white'; // Default color
+  else return 'white'; 
 }
 
 
@@ -197,12 +195,8 @@ function constructSvgStringWithColors(palette: number[][], pathColorIndices: num
   const svgFooter = `</svg>`;
 
   // Determine the color for the farcheck based on fid
-  const farcheckColor = getColorForFid(fid);
-
-  ///const farcheck = `<path fill-opacity=".9" d="m364.421 614.551 471.445-.442 8.159 99.486 8.82 111.617-486.219 1.986-10.143-112.5 7.938-100.147Z" fill="${farcheckColor}" />`;
-
-  ///const backgroundColor = palette ? `rgb(${palette[0]?.[0]}, ${palette[0]?.[1]}, ${palette[0]?.[2]})` : 'rgb(255, 255, 255)';
-  ///const backgroundPath = `<path fill="${backgroundColor}" d="M0 0h1200v1200H0z"/>`; // Adjust as necessary
+  // const farcheckColor = getColorForFid(fid);
+  // const farcheck = `<path fill-opacity=".9" d="" fill="${farcheckColor}" />`;
 
   const svgPaths = [
     '<path fill="COLOR" d="M384 256h-43v43h43v-43Zm43 0h-43v43h43v-43Zm42 0h-42v43h42v-43Zm43 0h-43v43h43v-43Zm43 0h-43v43h43v-43Zm42 0h-42v43h42v-43Zm43 0h-43v43h43v-43Zm-299 43h-42v42h42v-42Zm43 0h-43v42h43v-42Zm43 0h-43v42h43v-42Zm42 0h-42v42h42v-42Zm43 0h-43v42h43v-42Zm43 0h-43v42h43v-42Zm42 0h-42v42h42v-42Zm43 0h-43v42h43v-42Zm43 0h-43v42h43v-42Zm-342 85h-42v43h42v-43Zm86 0h-43v43h43v-43Zm85 0h-43v43h43v-43Zm85 0h-42v43h42v-43Zm86 0h-43v43h43v-43Z"/>',
