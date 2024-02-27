@@ -7,9 +7,6 @@ import kmeans from "kmeans-ts";
 
 export default async function handler(req: NextApiRequest, res: NextApiResponse) {
   try {
-    res.setHeader('Access-Control-Allow-Origin', '*');
-    res.setHeader('Access-Control-Allow-Methods', 'GET, OPTIONS');
-    res.setHeader('Access-Control-Allow-Headers', 'Origin, X-Requested-With, Content-Type, Accept');
 
     if (req.method === 'OPTIONS') {
       return res.status(200).end();
