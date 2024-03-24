@@ -149,8 +149,8 @@ async function getDominantColorInGrid(data: Buffer, startX: number, startY: numb
 function getColorForFid(fid: number): string {
   if (fid < 1000) return 'gold';
   else if (fid < 10000) return '#855DCD';
-  else if (fid < 20000) return '#94E337';
-  else return 'white'; // Default color
+  else if (fid < 100000) return '#CCFF00';
+  else return '#1F1D2A'; // Default color
 }
 
 function constructSvgStringWithColors(palette: number[][], pathColorIndices: number[], fid: number): string {
