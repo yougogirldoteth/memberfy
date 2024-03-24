@@ -148,8 +148,9 @@ async function getDominantColorInGrid(data: Buffer, startX: number, startY: numb
 // not used for this project, but could color any path based on fid (farcaster id)
 function getColorForFid(fid: number): string {
   if (fid < 1000) return 'gold';
-  else if (fid < 10000) return '#855DCD';
-  else if (fid < 100000) return '#CCFF00';
+  else if (fid < 10000) return '#855DCD'; // FC purple
+  else if (fid < 20000) return '#CCFF00'; // sendit green
+  else if (fid < 100000) return '#0857FF'; // based blue
   else return '#1F1D2A'; // Default color
 }
 
